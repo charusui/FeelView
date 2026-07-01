@@ -1,0 +1,3 @@
+// Asset directories — Flutter requires at least one file in each asset directory
+// referenced in pubspec.yaml. This file satisfies that requirement.
+// Real assets (images, audio, icons) go in the same directories.
