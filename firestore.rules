@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // MVP Dev Mode: allow read and write access for local emulator testing, demoing, and seeding.
+    // In Phase 4 production release, tighten to request.auth != null and family membership checks.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
