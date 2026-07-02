@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:feelview/models/models.dart';
+import 'package:feelview/services/firestore_service.dart';
 
 class PostInteractionBar extends StatefulWidget {
   final PostModel post;
@@ -121,6 +122,20 @@ class _PostInteractionBarState extends State<PostInteractionBar> {
                                         ],
                                       ),
                                     ),
+                                    if (widget.profile.role == UserRole.admin || name == widget.profile.displayName)
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                                        tooltip: 'Delete comment',
+                                        onPressed: () {
+                                          setModalState(() {
+                                            _comments.removeAt(idx);
+                                          });
+                                          setState(() {});
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Comment removed')),
+                                          );
+                                        },
+                                      ),
                                   ],
                                 ),
                               );
@@ -206,6 +221,36 @@ class _PostInteractionBarState extends State<PostInteractionBar> {
           ),
         ),
         const Spacer(),
+        if (widget.profile.role == UserRole.admin || widget.profile.id == widget.post.authorId)
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 22),
+            tooltip: 'Delete post',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Delete Memory?'),
+                  content: const Text('Are you sure you want to delete this post?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await FirestoreService.deletePost(widget.post.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Memory removed')),
+                  );
+                }
+              }
+            },
+          ),
         TextButton.icon(
           onPressed: _showCommentsSheet,
           style: TextButton.styleFrom(

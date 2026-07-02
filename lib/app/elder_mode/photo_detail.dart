@@ -5,6 +5,8 @@ import 'package:feelview/models/models.dart';
 import 'package:feelview/services/tts_service.dart';
 import 'package:feelview/widgets/widgets.dart';
 import 'package:feelview/widgets/accessible_text.dart';
+import 'package:feelview/providers/app_providers.dart';
+import 'package:feelview/services/firestore_service.dart';
 
 class PhotoDetail extends ConsumerStatefulWidget {
   const PhotoDetail({super.key});
@@ -56,8 +58,46 @@ class _PhotoDetailState extends ConsumerState<PhotoDetail> {
             ? post.caption
             : 'A photo shared by your family.';
 
+    final activeProfile = ref.watch(activeProfileProvider);
+    final canDelete = activeProfile?.role == UserRole.admin || activeProfile?.id == post.authorId;
+
     return Scaffold(
-      appBar: AppBar(title: Text(member?.displayName ?? 'Photo')),
+      appBar: AppBar(
+        title: Text(member?.displayName ?? 'Photo'),
+        actions: [
+          if (canDelete)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 28),
+              tooltip: 'Delete Photo',
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete Photo?'),
+                    content: const Text('Are you sure you want to delete this photo memory?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await FirestoreService.deletePost(post!.id);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Photo deleted')),
+                    );
+                  }
+                }
+              },
+            ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 120),
         child: Column(

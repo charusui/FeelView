@@ -7,6 +7,8 @@ import 'package:feelview/dev/seed_data.dart';
 class FirestoreService {
   static final _db = FirebaseFirestore.instance;
   static const _uuid = Uuid();
+  static final Set<String> _deletedPosts = {};
+  static final Set<String> _deletedMessages = {};
 
   // ─── Collections ──────────────────────────────────────────────────────────
 
@@ -68,7 +70,7 @@ class FirestoreService {
           String authorId, String familyId) {
     if (!useEmulator) {
       return Stream.value(
-          SeedData.samplePosts.where((p) => p.authorId == authorId).toList());
+          SeedData.samplePosts.where((p) => p.authorId == authorId && !_deletedPosts.contains(p.id)).toList());
     }
     return _posts
         .where('authorId', isEqualTo: authorId)
@@ -76,12 +78,12 @@ class FirestoreService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((s) =>
-            s.docs.map((d) => PostModel.fromMap(d.id, d.data())).toList());
+            s.docs.map((d) => PostModel.fromMap(d.id, d.data())).where((p) => !_deletedPosts.contains(p.id)).toList());
   }
 
   static Stream<List<PostModel>> watchFamilyPosts(String familyId) {
     if (!useEmulator) {
-      final list = SeedData.samplePosts.where((p) => p.familyId == familyId).toList()
+      final list = SeedData.samplePosts.where((p) => p.familyId == familyId && !_deletedPosts.contains(p.id)).toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return Stream.value(list);
     }
@@ -90,7 +92,7 @@ class FirestoreService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((s) =>
-            s.docs.map((d) => PostModel.fromMap(d.id, d.data())).toList());
+            s.docs.map((d) => PostModel.fromMap(d.id, d.data())).where((p) => !_deletedPosts.contains(p.id)).toList());
   }
 
   static Future<String> createPost(PostModel post) async {
@@ -108,6 +110,7 @@ class FirestoreService {
   }
 
   static Future<void> deletePost(String postId) async {
+    _deletedPosts.add(postId);
     try {
       await _posts.doc(postId).delete();
     } catch (_) {}
@@ -219,12 +222,18 @@ class FirestoreService {
   // ─── Messages ─────────────────────────────────────────────────────────────
 
   static Stream<List<ChatMessageModel>> watchMessages(String threadId) {
-    if (!useEmulator) return Stream.value(SeedData.getSampleMessages(threadId));
+    if (!useEmulator) {
+      final list = SeedData.getSampleMessages(threadId)
+          .where((m) => !_deletedMessages.contains(m.id))
+          .toList();
+      return Stream.value(list);
+    }
     return _messages(threadId)
         .orderBy('createdAt', descending: false)
         .snapshots()
         .map((s) => s.docs
             .map((d) => ChatMessageModel.fromMap(d.id, d.data()))
+            .where((m) => !_deletedMessages.contains(m.id))
             .toList());
   }
 
@@ -232,6 +241,13 @@ class FirestoreService {
     final id = _uuid.v4();
     try {
       await _messages(message.threadId).doc(id).set(message.toMap());
+    } catch (_) {}
+  }
+
+  static Future<void> deleteMessage(String threadId, String messageId) async {
+    _deletedMessages.add(messageId);
+    try {
+      await _messages(threadId).doc(messageId).delete();
     } catch (_) {}
   }
 }
