@@ -95,6 +95,11 @@ class ElderShell extends StatelessWidget {
               label: 'Home',
             ),
             NavigationDestination(
+              icon: Icon(Icons.add_a_photo_outlined, size: 30),
+              selectedIcon: Icon(Icons.add_a_photo_rounded, size: 34, color: Color(0xFF0F5C43)),
+              label: 'Post',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline_rounded, size: 30),
               selectedIcon: Icon(Icons.chat_bubble_rounded, size: 34, color: Color(0xFF0F5C43)),
               label: 'Chat',

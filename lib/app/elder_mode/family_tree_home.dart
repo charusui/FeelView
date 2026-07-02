@@ -21,8 +21,9 @@ class _FamilyTreeHomeState extends ConsumerState<FamilyTreeHome> {
 
   void _onNavTap(int index) {
     if (index == 0) return;
-    if (index == 1) Navigator.pushNamed(context, AppRouter.elderChat);
-    if (index == 2) Navigator.pushNamed(context, AppRouter.elderSettings);
+    if (index == 1) Navigator.pushNamed(context, AppRouter.posterCompose);
+    if (index == 2) Navigator.pushNamed(context, AppRouter.elderChat);
+    if (index == 3) Navigator.pushNamed(context, AppRouter.elderSettings);
   }
 
   @override
