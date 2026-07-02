@@ -522,10 +522,11 @@ class _PosterHomeState extends ConsumerState<PosterHome> {
                         style: TextStyle(fontSize: 14, color: Color(0xFFD1FAE5)),
                       ),
                       const SizedBox(height: 12),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
                           _buildProfileStatBadge('Family Network', 'Alvarez'),
-                          const SizedBox(width: 8),
                           _buildProfileStatBadge('Status', 'Connected'),
                         ],
                       ),
