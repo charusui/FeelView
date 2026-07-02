@@ -8,6 +8,9 @@ import 'package:feelview/widgets/accessible_button.dart';
 import 'package:feelview/widgets/accessible_text.dart';
 import 'package:feelview/app/elder_mode/elder_shell.dart';
 import 'package:feelview/app/router.dart';
+import 'package:feelview/app/elder_mode/settings.dart';
+import 'package:feelview/app/elder_mode/chat/chat_thread_list.dart';
+import 'package:feelview/app/poster_mode/composer.dart';
 
 class FamilyTreeHome extends ConsumerStatefulWidget {
   const FamilyTreeHome({super.key});
@@ -20,10 +23,92 @@ class _FamilyTreeHomeState extends ConsumerState<FamilyTreeHome> {
   int _navIndex = 0;
 
   void _onNavTap(int index) {
-    if (index == 0) return;
-    if (index == 1) Navigator.pushNamed(context, AppRouter.posterCompose);
-    if (index == 2) Navigator.pushNamed(context, AppRouter.elderChat);
-    if (index == 3) Navigator.pushNamed(context, AppRouter.elderSettings);
+    setState(() {
+      _navIndex = index;
+    });
+  }
+
+  Widget _buildHomeView(
+    BuildContext context,
+    MemberModel? profile,
+    AsyncValue<List<MemberModel>> coreAsync,
+    AsyncValue<List<MemberModel>> allMembersAsync,
+  ) {
+    return coreAsync.when(
+      loading: () => const CalmLoadingIndicator(message: 'Loading your family...'),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Card(
+            color: const Color(0xFFFEE2E2),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: ElderBody('Something went wrong loading your family. Please check your connection.', textAlign: TextAlign.center),
+            ),
+          ),
+        ),
+      ),
+      data: (coreMembers) {
+        if (coreMembers.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(36),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.photo_library_rounded, size: 64, color: Theme.of(context).colorScheme.primary),
+                      ),
+                      const SizedBox(height: 24),
+                      ElderHeading('Welcome to Your Family Tree!', textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElderBody(
+                        'Your family photos and voice notes will appear right here.\nAsk David or Maria to post some new photos for you!',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final elderId = profile?.id ?? '';
+        final hasMore = allMembersAsync.valueOrNull?.any(
+              (m) => !m.isCoreCircleFor.contains(elderId),
+            ) ??
+            false;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Voice Finder Bar replacing old banner
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: VoiceFinderBar(elderId: elderId),
+            ),
+            // Vertical Family Tree
+            Expanded(
+              child: VerticalFamilyTree(
+                coreMembers: coreMembers,
+                elder: profile,
+                hasMore: hasMore,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -34,12 +119,14 @@ class _FamilyTreeHomeState extends ConsumerState<FamilyTreeHome> {
 
     final greeting = profile != null ? 'Hello, ${profile.displayName}!' : 'Hello!';
 
-    return ElderShell(
-      title: greeting,
-      currentIndex: _navIndex,
-      onTap: _onNavTap,
-      automaticallyImplyLeading: false,
-      actions: [
+    Widget currentBody;
+    String? currentTitle;
+    List<Widget>? currentActions;
+
+    if (_navIndex == 0) {
+      currentBody = _buildHomeView(context, profile, coreAsync, allMembersAsync);
+      currentTitle = greeting;
+      currentActions = [
         Padding(
           padding: const EdgeInsets.only(right: 12),
           child: TextButton.icon(
@@ -52,82 +139,28 @@ class _FamilyTreeHomeState extends ConsumerState<FamilyTreeHome> {
             label: const Text('Switch Profile', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           ),
         ),
-      ],
-      body: coreAsync.when(
-        loading: () => const CalmLoadingIndicator(message: 'Loading your family...'),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Card(
-              color: const Color(0xFFFEE2E2),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: ElderBody('Something went wrong loading your family. Please check your connection.', textAlign: TextAlign.center),
-              ),
-            ),
-          ),
-        ),
-        data: (coreMembers) {
-          if (coreMembers.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(36),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primaryContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.photo_library_rounded, size: 64, color: Theme.of(context).colorScheme.primary),
-                        ),
-                        const SizedBox(height: 24),
-                        ElderHeading('Welcome to Your Family Tree!', textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElderBody(
-                          'Your family photos and voice notes will appear right here.\nAsk David or Maria to post some new photos for you!',
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }
+      ];
+    } else if (_navIndex == 1) {
+      currentBody = PostComposer();
+      currentTitle = null;
+      currentActions = null;
+    } else if (_navIndex == 2) {
+      currentBody = ChatThreadList();
+      currentTitle = null;
+      currentActions = null;
+    } else {
+      currentBody = ElderSettings();
+      currentTitle = null;
+      currentActions = null;
+    }
 
-          final elderId = profile?.id ?? '';
-          final hasMore = allMembersAsync.valueOrNull?.any(
-                (m) => !m.isCoreCircleFor.contains(elderId),
-              ) ??
-              false;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Voice Finder Bar replacing old banner
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                child: VoiceFinderBar(elderId: elderId),
-              ),
-              // Vertical Family Tree
-              Expanded(
-                child: VerticalFamilyTree(
-                  coreMembers: coreMembers,
-                  elder: profile,
-                  hasMore: hasMore,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+    return ElderShell(
+      title: currentTitle,
+      currentIndex: _navIndex,
+      onTap: _onNavTap,
+      automaticallyImplyLeading: false,
+      actions: currentActions,
+      body: currentBody,
     );
   }
 }
