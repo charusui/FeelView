@@ -339,6 +339,18 @@ class PhotoCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.chat_bubble_outline_rounded,
+                              color: theme.colorScheme.secondary, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElderCaption('3 Family Comments • Tap to read & reply',
+                                color: theme.colorScheme.secondary),
+                          ),
+                        ],
+                      ),
                     ],
                   ],
                 ),

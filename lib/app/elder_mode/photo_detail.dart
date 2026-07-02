@@ -17,9 +17,16 @@ class PhotoDetail extends ConsumerStatefulWidget {
 
 class _PhotoDetailState extends ConsumerState<PhotoDetail> {
   bool _isSpeaking = false;
+  final List<String> _comments = [
+    'Grandma Rosa: So lovely! Seeing this made my day ❤️',
+    'Maria Alvarez: Wish we could all be there together!',
+    'Carlos Alvarez: Great memory! Sending big hugs!',
+  ];
+  final TextEditingController _commentCtrl = TextEditingController();
 
   @override
   void dispose() {
+    _commentCtrl.dispose();
     TtsService.stop();
     super.dispose();
   }
@@ -185,6 +192,104 @@ class _PhotoDetailState extends ConsumerState<PhotoDetail> {
                         ElderBody(narration),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 32),
+                  ElderHeading('Family Comments (${_comments.length})', color: theme.colorScheme.primary),
+                  const SizedBox(height: 16),
+                  ...List.generate(_comments.length, (idx) {
+                    final parts = _comments[idx].split(': ');
+                    final name = parts.isNotEmpty ? parts[0] : 'Member';
+                    final text = parts.length > 1 ? parts.sublist(1).join(': ') : _comments[idx];
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.15)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: theme.colorScheme.primaryContainer,
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: theme.colorScheme.onPrimaryContainer),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(child: ElderHeading(name)),
+                                    IconButton(
+                                      icon: Icon(Icons.volume_up_rounded, color: theme.colorScheme.primary, size: 24),
+                                      tooltip: 'Listen to comment',
+                                      onPressed: () => _toggleSpeak('$name says: $text'),
+                                    ),
+                                    if (canDelete)
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 24),
+                                        tooltip: 'Delete comment',
+                                        onPressed: () {
+                                          setState(() => _comments.removeAt(idx));
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Comment removed')),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                ElderBody(text),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentCtrl,
+                          style: const TextStyle(fontSize: 18),
+                          decoration: InputDecoration(
+                            hintText: 'Write a comment...',
+                            hintStyle: const TextStyle(fontSize: 18),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (_commentCtrl.text.trim().isNotEmpty) {
+                            final activeProfile = ref.read(activeProfileProvider);
+                            setState(() {
+                              _comments.add('${activeProfile?.displayName ?? "Grandma Rosa"}: ${_commentCtrl.text.trim()}');
+                              _commentCtrl.clear();
+                            });
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Send', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
                 ],
               ),
