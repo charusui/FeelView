@@ -39,6 +39,32 @@ class _PosterChatConversationState extends ConsumerState<PosterChatConversation>
     _ctrl.clear();
   }
 
+  void _confirmDelete(BuildContext context, String threadId, String msgId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Message?'),
+        content: const Text('Are you sure you want to remove this message?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await FirestoreService.deleteMessage(threadId, msgId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Message removed')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final thread = ModalRoute.of(context)?.settings.arguments as ChatThreadModel?;
@@ -66,39 +92,58 @@ class _PosterChatConversationState extends ConsumerState<PosterChatConversation>
                   itemBuilder: (context, i) {
                     final m = msgs[i];
                     final isMe = m.senderId == profile?.id;
+                    final canDelete = profile?.role == UserRole.admin || isMe;
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 5),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe ? const Color(0xFF2563EB) : Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(18),
-                            topRight: const Radius.circular(18),
-                            bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
-                            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
-                          ),
-                          border: isMe ? null : Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        children: [
+                          if (canDelete && isMe)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                              tooltip: 'Delete message',
+                              onPressed: () => _confirmDelete(context, thread.id, m.id),
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          m.content,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: isMe ? Colors.white : const Color(0xFF1E3A5F),
-                            height: 1.4,
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 5),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isMe ? const Color(0xFF2563EB) : Colors.white,
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(18),
+                                topRight: const Radius.circular(18),
+                                bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
+                                bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
+                              ),
+                              border: isMe ? null : Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              m.content,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: isMe ? Colors.white : const Color(0xFF1E3A5F),
+                                height: 1.4,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (canDelete && !isMe)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                              tooltip: 'Delete message',
+                              onPressed: () => _confirmDelete(context, thread.id, m.id),
+                            ),
+                        ],
                       ),
                     );
                   },
